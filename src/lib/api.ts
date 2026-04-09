@@ -5,7 +5,7 @@ import {
   getMockTips,
   type ApiResponse,
 } from './mock-data';
-import type { Court, Game, Tournament, User, Tip, DashboardStats, AdminNotification } from '@/types/models';
+import type { Court, Game, Group, Tournament, User, Tip, DashboardStats, AdminNotification } from '@/types/models';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_ENDPOINT || '';
 
@@ -43,7 +43,44 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   }
 }
 
+/**
+ * Upload a file to S3 via presigned URL.
+ * Returns the CDN URL of the uploaded file.
+ */
+async function uploadFile(
+  file: File,
+  category: 'avatars' | 'courts' | 'tournaments' | 'gear' | 'groups'
+): Promise<ApiResponse<string>> {
+  const fileType = file.type as 'image/jpeg' | 'image/png' | 'image/webp';
+  const presigned = await request<{ uploadUrl: string; cdnUrl: string; key: string }>(
+    '/uploads/presigned-url',
+    { method: 'POST', body: JSON.stringify({ category, fileType }) }
+  );
+
+  if (presigned.error || !presigned.data) {
+    return { data: null, error: presigned.error || 'Failed to get upload URL' };
+  }
+
+  try {
+    const uploadResponse = await fetch(presigned.data.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': fileType },
+      body: file,
+    });
+
+    if (!uploadResponse.ok) {
+      return { data: null, error: `Upload failed: ${uploadResponse.status}` };
+    }
+
+    return { data: presigned.data.cdnUrl, error: null };
+  } catch (error) {
+    return { data: null, error: error instanceof Error ? error.message : 'Upload failed' };
+  }
+}
+
 export const api = {
+  uploadFile,
+
   // ==========================================================================
   // REAL ENDPOINTS (already exist in backend)
   // ==========================================================================
@@ -95,6 +132,12 @@ export const api = {
 
     getGame: (id: string): Promise<ApiResponse<Game>> => request<Game>(`/admin/games/${id}`),
 
+    updateGame: (id: string, game: Partial<Game>): Promise<ApiResponse<Game>> =>
+      request<Game>(`/admin/games/${id}`, { method: 'PUT', body: JSON.stringify(game) }),
+
+    endGame: (id: string): Promise<ApiResponse<Game>> =>
+      request<Game>(`/admin/games/${id}/end`, { method: 'POST' }),
+
     deleteGame: (id: string): Promise<ApiResponse<{ message: string }>> =>
       request<{ message: string }>(`/admin/games/${id}`, { method: 'DELETE' }),
 
@@ -141,5 +184,17 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+
+    getGroups: (): Promise<ApiResponse<{ groups: Group[] }>> =>
+      request<{ groups: Group[] }>('/admin/groups'),
+
+    createGroup: (group: Partial<Group>): Promise<ApiResponse<Group>> =>
+      request<Group>('/admin/groups', { method: 'POST', body: JSON.stringify(group) }),
+
+    updateGroup: (id: string, group: Partial<Group>): Promise<ApiResponse<Group>> =>
+      request<Group>(`/admin/groups/${id}`, { method: 'PUT', body: JSON.stringify(group) }),
+
+    deleteGroup: (id: string): Promise<ApiResponse<{ message: string }>> =>
+      request<{ message: string }>(`/admin/groups/${id}`, { method: 'DELETE' }),
   },
 };

@@ -310,6 +310,23 @@ export interface Session extends BaseEntity {
 }
 
 // =============================================================================
+// GROUP MODEL
+// =============================================================================
+
+export interface Group extends BaseEntity {
+  name: string;
+  description?: string;
+  ownerUserId?: string;
+  ownerName?: string;
+  memberCount: number;
+  isPrivate: boolean;
+  location?: string;
+  imageUrl?: string;
+  bannerUrl?: string;
+  tags?: string[];
+}
+
+// =============================================================================
 // COURT MODEL
 // =============================================================================
 
@@ -357,6 +374,7 @@ export interface AdminUser {
   name?: string;
   groups: string[];
   isAdmin: boolean;
+  isSuperAdmin: boolean;
 }
 
 export interface DashboardStats {

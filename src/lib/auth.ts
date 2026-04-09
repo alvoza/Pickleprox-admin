@@ -13,6 +13,7 @@ const poolData = {
 const userPool = new CognitoUserPool(poolData);
 
 const ADMIN_GROUPS = ['app_managers', 'court_owners', 'tournament_admins'];
+const SUPER_ADMIN_GROUP = 'app_managers';
 
 export async function signIn(email: string, password: string): Promise<CognitoUserSession> {
   return new Promise((resolve, reject) => {
@@ -81,6 +82,12 @@ export function isAdmin(session: CognitoUserSession): boolean {
   return groups.some(g => ADMIN_GROUPS.includes(g));
 }
 
+export function isSuperAdmin(session: CognitoUserSession): boolean {
+  const payload = session.getIdToken().decodePayload();
+  const groups: string[] = payload['cognito:groups'] || [];
+  return groups.includes(SUPER_ADMIN_GROUP);
+}
+
 export function getUserFromSession(session: CognitoUserSession) {
   const payload = session.getIdToken().decodePayload();
   return {
@@ -89,5 +96,6 @@ export function getUserFromSession(session: CognitoUserSession) {
     name: (payload.name || payload.email) as string,
     groups: (payload['cognito:groups'] || []) as string[],
     isAdmin: isAdmin(session),
+    isSuperAdmin: isSuperAdmin(session),
   };
 }

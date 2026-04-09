@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Badge, getStatusBadgeVariant } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
-import { Trash2, Eye, Gamepad2, Clock } from 'lucide-react';
+import { FormField, inputClasses, textareaClasses } from '@/components/ui/form-field';
+import { Trash2, Eye, Gamepad2, Clock, Pencil, StopCircle } from 'lucide-react';
 import { formatDate, capitalize } from '@/lib/utils';
-import type { Game } from '@/types/models';
+import type { Game, GameType, GameStatus, SkillLevel } from '@/types/models';
 
 interface AdminGame extends Game {
   itemType: 'game' | 'session';
@@ -17,14 +19,39 @@ interface AdminGame extends Game {
   duration?: number;
 }
 
+const GAME_TYPES: GameType[] = ['singles', 'doubles', 'mixed_doubles', 'round_robin', 'open_play'];
+const GAME_STATUSES: GameStatus[] = ['open', 'full', 'in_progress', 'completed', 'cancelled', 'created'];
+const SKILL_LEVELS: ('all' | SkillLevel)[] = ['all', 'beginner', 'intermediate', 'advanced', 'pro'];
+
+const ENDABLE_STATUSES: GameStatus[] = ['open', 'full', 'in_progress', 'created'];
+
 export default function GamesPage() {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.isSuperAdmin ?? false;
+
   const [games, setGames] = useState<AdminGame[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [deleteConfirm, setDeleteConfirm] = useState<AdminGame | null>(null);
   const [detailGame, setDetailGame] = useState<AdminGame | null>(null);
+  const [editGame, setEditGame] = useState<AdminGame | null>(null);
+  const [endConfirm, setEndConfirm] = useState<AdminGame | null>(null);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  // Edit form state
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editStartTime, setEditStartTime] = useState('');
+  const [editEndTime, setEditEndTime] = useState('');
+  const [editMaxParticipants, setEditMaxParticipants] = useState(8);
+  const [editGameType, setEditGameType] = useState<GameType>('doubles');
+  const [editSkillLevel, setEditSkillLevel] = useState<'all' | SkillLevel>('all');
+  const [editStatus, setEditStatus] = useState<GameStatus>('open');
+  const [editCourtName, setEditCourtName] = useState('');
+  const [editAddress, setEditAddress] = useState('');
 
   const loadGames = useCallback(async () => {
     const result = await api.admin.getGames();
@@ -46,6 +73,71 @@ export default function GamesPage() {
       setError('');
       await loadGames();
     }
+  }
+
+  function openEditModal(game: AdminGame) {
+    setEditGame(game);
+    setEditTitle(game.title);
+    setEditDescription(game.description || '');
+    setEditDate(game.date);
+    setEditStartTime(game.startTime || '');
+    setEditEndTime(game.endTime || '');
+    setEditMaxParticipants(game.maxParticipants);
+    setEditGameType(game.gameType);
+    setEditSkillLevel(game.skillLevel || 'all');
+    setEditStatus(game.status);
+    setEditCourtName(game.courtName || '');
+    setEditAddress(game.address || '');
+    setError('');
+  }
+
+  async function handleSaveEdit() {
+    if (!editGame || !editTitle.trim()) return;
+    setSaving(true);
+    setError('');
+
+    const result = await api.admin.updateGame(editGame.id, {
+      title: editTitle,
+      description: editDescription || undefined,
+      date: editDate,
+      startTime: editStartTime,
+      endTime: editEndTime || undefined,
+      maxParticipants: editMaxParticipants,
+      gameType: editGameType,
+      skillLevel: editSkillLevel,
+      status: editStatus,
+      courtName: editCourtName || undefined,
+      address: editAddress || undefined,
+    });
+
+    setSaving(false);
+
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+
+    setEditGame(null);
+    await loadGames();
+  }
+
+  async function handleEndGame() {
+    if (!endConfirm) return;
+    setSaving(true);
+    setError('');
+
+    const result = await api.admin.endGame(endConfirm.id);
+
+    setSaving(false);
+
+    if (result.error) {
+      setError(result.error);
+      setEndConfirm(null);
+      return;
+    }
+
+    setEndConfirm(null);
+    await loadGames();
   }
 
   function getLocationDisplay(game: AdminGame): string {
@@ -138,7 +230,7 @@ export default function GamesPage() {
     {
       key: 'actions',
       header: '',
-      className: 'w-24',
+      className: 'w-36',
       render: (game) => (
         <div className="flex items-center gap-1">
           <button
@@ -148,6 +240,26 @@ export default function GamesPage() {
           >
             <Eye size={15} />
           </button>
+          {isSuperAdmin && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); openEditModal(game as AdminGame); }}
+                className="rounded p-1.5 text-muted hover:bg-gray-100 hover:text-brand-orange dark:hover:bg-dark-tertiary"
+                title="Edit Game"
+              >
+                <Pencil size={15} />
+              </button>
+              {ENDABLE_STATUSES.includes((game as AdminGame).status) && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setEndConfirm(game as AdminGame); }}
+                  className="rounded p-1.5 text-muted hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                  title="End Game"
+                >
+                  <StopCircle size={15} />
+                </button>
+              )}
+            </>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); setDeleteConfirm(game as AdminGame); }}
             className="rounded p-1.5 text-muted hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
@@ -312,12 +424,186 @@ export default function GamesPage() {
               <Button variant="secondary" onClick={() => setDetailGame(null)}>
                 Close
               </Button>
+              {isSuperAdmin && (
+                <Button onClick={() => { const g = detailGame; setDetailGame(null); openEditModal(g); }}>
+                  <Pencil size={14} />
+                  Edit
+                </Button>
+              )}
+              {isSuperAdmin && ENDABLE_STATUSES.includes(detailGame.status) && (
+                <Button variant="danger" onClick={() => { const g = detailGame; setDetailGame(null); setEndConfirm(g); }}>
+                  <StopCircle size={14} />
+                  End Game
+                </Button>
+              )}
               <Button variant="danger" onClick={() => { setDetailGame(null); setDeleteConfirm(detailGame); }}>
                 Delete
               </Button>
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Edit Game Modal (Super Admin only) */}
+      <Modal
+        isOpen={!!editGame}
+        onClose={() => !saving && setEditGame(null)}
+        title="Edit Game"
+        size="lg"
+      >
+        {editGame && (
+          <div className="space-y-4">
+            <FormField label="Title">
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className={inputClasses}
+              />
+            </FormField>
+
+            <FormField label="Description">
+              <textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                className={textareaClasses}
+                rows={2}
+              />
+            </FormField>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Date">
+                <input
+                  type="date"
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  className={inputClasses}
+                />
+              </FormField>
+
+              <FormField label="Status">
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value as GameStatus)}
+                  className={inputClasses}
+                >
+                  {GAME_STATUSES.map(s => (
+                    <option key={s} value={s}>{capitalize(s)}</option>
+                  ))}
+                </select>
+              </FormField>
+
+              <FormField label="Start Time">
+                <input
+                  type="text"
+                  value={editStartTime}
+                  onChange={(e) => setEditStartTime(e.target.value)}
+                  className={inputClasses}
+                  placeholder="e.g. 9:00 AM"
+                />
+              </FormField>
+
+              <FormField label="End Time">
+                <input
+                  type="text"
+                  value={editEndTime}
+                  onChange={(e) => setEditEndTime(e.target.value)}
+                  className={inputClasses}
+                  placeholder="e.g. 11:00 AM"
+                />
+              </FormField>
+
+              <FormField label="Game Type">
+                <select
+                  value={editGameType}
+                  onChange={(e) => setEditGameType(e.target.value as GameType)}
+                  className={inputClasses}
+                >
+                  {GAME_TYPES.map(t => (
+                    <option key={t} value={t}>{capitalize(t)}</option>
+                  ))}
+                </select>
+              </FormField>
+
+              <FormField label="Skill Level">
+                <select
+                  value={editSkillLevel}
+                  onChange={(e) => setEditSkillLevel(e.target.value as 'all' | SkillLevel)}
+                  className={inputClasses}
+                >
+                  {SKILL_LEVELS.map(s => (
+                    <option key={s} value={s}>{capitalize(s)}</option>
+                  ))}
+                </select>
+              </FormField>
+
+              <FormField label="Max Participants">
+                <input
+                  type="number"
+                  value={editMaxParticipants}
+                  onChange={(e) => setEditMaxParticipants(Number(e.target.value))}
+                  className={inputClasses}
+                  min={2}
+                  max={64}
+                />
+              </FormField>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Court Name">
+                <input
+                  type="text"
+                  value={editCourtName}
+                  onChange={(e) => setEditCourtName(e.target.value)}
+                  className={inputClasses}
+                  placeholder="Court name"
+                />
+              </FormField>
+
+              <FormField label="Address">
+                <input
+                  type="text"
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  className={inputClasses}
+                  placeholder="Address"
+                />
+              </FormField>
+            </div>
+
+            <div className="flex justify-end gap-3 border-t border-border-light pt-4 dark:border-border-dark">
+              <Button variant="secondary" onClick={() => setEditGame(null)} disabled={saving}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEdit} disabled={!editTitle.trim() || saving}>
+                {saving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* End Game Confirmation Modal (Super Admin only) */}
+      <Modal
+        isOpen={!!endConfirm}
+        onClose={() => !saving && setEndConfirm(null)}
+        title="End Game"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted">
+            Are you sure you want to end <strong className="text-[var(--foreground)]">{endConfirm?.title}</strong>?
+            This will mark the game as completed and notify all participants.
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setEndConfirm(null)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={handleEndGame} disabled={saving}>
+              {saving ? 'Ending...' : 'End Game'}
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* Delete Confirmation Modal */}

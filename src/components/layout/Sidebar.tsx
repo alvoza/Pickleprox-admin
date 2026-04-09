@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
   Users,
+  Users2,
   MapPin,
   Gamepad2,
   Trophy,
@@ -36,6 +37,7 @@ const navigation = [
       { name: 'Courts', href: '/courts', icon: MapPin },
       { name: 'Games & Events', href: '/games', icon: Gamepad2 },
       { name: 'Tournaments', href: '/tournaments', icon: Trophy },
+      { name: 'Groups', href: '/groups', icon: Users2 },
     ],
   },
   {
