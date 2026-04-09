@@ -330,6 +330,24 @@ export interface Court extends BaseEntity {
 }
 
 // =============================================================================
+// NOTIFICATION MODEL
+// =============================================================================
+
+export type NotificationAudience = 'all' | 'skill_level' | 'premium';
+export type NotificationStatus = 'sent' | 'failed' | 'sending';
+
+export interface AdminNotification extends BaseEntity {
+  title: string;
+  body: string;
+  audience: NotificationAudience;
+  audienceFilter?: string;
+  recipientCount: number;
+  deliveredCount: number;
+  status: NotificationStatus;
+  sentBy: string;
+}
+
+// =============================================================================
 // ADMIN-SPECIFIC TYPES
 // =============================================================================
 

@@ -10,6 +10,7 @@ import {
   Gamepad2,
   Trophy,
   Lightbulb,
+  Bell,
   X,
   ChevronLeft,
 } from 'lucide-react';
@@ -41,6 +42,12 @@ const navigation = [
     title: 'Content',
     items: [
       { name: 'Tips', href: '/tips', icon: Lightbulb },
+    ],
+  },
+  {
+    title: 'Engagement',
+    items: [
+      { name: 'Notifications', href: '/notifications', icon: Bell },
     ],
   },
 ];

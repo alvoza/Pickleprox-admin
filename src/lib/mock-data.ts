@@ -1,4 +1,4 @@
-import type { User, Court, Tournament, Tip, DashboardStats, Game, ActivityItem } from '@/types/models';
+import type { User, Court, Tournament, Tip, DashboardStats, Game, ActivityItem, AdminNotification } from '@/types/models';
 
 // =============================================================================
 // MOCK USERS (25 users)
@@ -83,6 +83,18 @@ const mockTournaments: Tournament[] = [
 ];
 
 // =============================================================================
+// MOCK NOTIFICATIONS
+// =============================================================================
+
+const mockNotifications: AdminNotification[] = [
+  { id: 'n1', title: 'Welcome to PicklePro!', body: 'Thanks for joining our pickleball community. Check out nearby courts and find your first game!', audience: 'all', recipientCount: 25, deliveredCount: 22, status: 'sent', sentBy: 'Admin', createdAt: '2026-03-28T10:00:00Z', updatedAt: '2026-03-28T10:00:00Z' },
+  { id: 'n2', title: 'New Tournament: Miami Pro Series', body: 'Registration is now open for the Miami Pro Series Open on March 15. Sign up before spots fill up!', audience: 'skill_level', audienceFilter: 'pro', recipientCount: 4, deliveredCount: 4, status: 'sent', sentBy: 'Admin', createdAt: '2026-03-25T14:30:00Z', updatedAt: '2026-03-25T14:30:00Z' },
+  { id: 'n3', title: 'Premium Feature Update', body: 'New analytics dashboard is now available for Plus and Pro members. Track your performance like never before!', audience: 'premium', audienceFilter: 'plus,pro', recipientCount: 7, deliveredCount: 6, status: 'sent', sentBy: 'Admin', createdAt: '2026-03-20T09:00:00Z', updatedAt: '2026-03-20T09:00:00Z' },
+  { id: 'n4', title: 'Weekend Open Play Events', body: 'Multiple open play sessions this weekend across South Florida courts. Tap to see events near you!', audience: 'all', recipientCount: 25, deliveredCount: 21, status: 'sent', sentBy: 'Admin', createdAt: '2026-03-15T16:00:00Z', updatedAt: '2026-03-15T16:00:00Z' },
+  { id: 'n5', title: 'Beginner Tips Series', body: 'We\'ve added new tips for beginners! Check out our latest guides on serving technique and court positioning.', audience: 'skill_level', audienceFilter: 'beginner', recipientCount: 6, deliveredCount: 5, status: 'sent', sentBy: 'Admin', createdAt: '2026-03-10T11:00:00Z', updatedAt: '2026-03-10T11:00:00Z' },
+];
+
+// =============================================================================
 // DASHBOARD STATS
 // =============================================================================
 
@@ -162,4 +174,34 @@ export async function getMockTournaments(): Promise<ApiResponse<{ tournaments: T
 export async function getMockTips(): Promise<ApiResponse<{ tips: Tip[] }>> {
   await delay();
   return { data: { tips: mockTips }, error: null };
+}
+
+export async function getMockNotifications(): Promise<ApiResponse<{ notifications: AdminNotification[] }>> {
+  await delay();
+  return { data: { notifications: mockNotifications }, error: null };
+}
+
+export async function sendMockNotification(notification: Partial<AdminNotification>): Promise<ApiResponse<AdminNotification>> {
+  await delay(500);
+  const audienceCount = notification.audience === 'all' ? 25
+    : notification.audience === 'premium' ? 7
+    : notification.audienceFilter === 'beginner' ? 6
+    : notification.audienceFilter === 'intermediate' ? 7
+    : notification.audienceFilter === 'advanced' ? 6
+    : notification.audienceFilter === 'pro' ? 4
+    : 25;
+  const sent: AdminNotification = {
+    id: `n${Date.now()}`,
+    title: notification.title || '',
+    body: notification.body || '',
+    audience: notification.audience || 'all',
+    audienceFilter: notification.audienceFilter,
+    recipientCount: audienceCount,
+    deliveredCount: Math.max(1, audienceCount - Math.floor(Math.random() * 3)),
+    status: 'sent',
+    sentBy: 'Admin',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  return { data: sent, error: null };
 }

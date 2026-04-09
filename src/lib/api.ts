@@ -5,7 +5,7 @@ import {
   getMockTips,
   type ApiResponse,
 } from './mock-data';
-import type { Court, Game, Tournament, User, Tip, DashboardStats } from '@/types/models';
+import type { Court, Game, Tournament, User, Tip, DashboardStats, AdminNotification } from '@/types/models';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_ENDPOINT || '';
 
@@ -126,5 +126,20 @@ export const api = {
     deleteTip: async (_id: string): Promise<ApiResponse<void>> => {
       return { data: undefined as unknown as void, error: null };
     },
+
+    getNotifications: (): Promise<ApiResponse<{ notifications: AdminNotification[] }>> =>
+      request<{ notifications: AdminNotification[] }>('/admin/notifications'),
+
+    sendNotification: (notification: Partial<AdminNotification>): Promise<ApiResponse<AdminNotification>> =>
+      request<AdminNotification>('/admin/notifications/send', {
+        method: 'POST',
+        body: JSON.stringify(notification),
+      }),
+
+    testNotification: (data: { userId?: string; title?: string; body?: string }): Promise<ApiResponse<{ success: boolean; deviceCount: number; sent: number; errors: string[] }>> =>
+      request('/admin/notifications/test', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
   },
 };
