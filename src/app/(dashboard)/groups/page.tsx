@@ -8,8 +8,23 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { FormField, inputClasses } from '@/components/ui/form-field';
 import { ImageUpload } from '@/components/ui/image-upload';
-import { Users2, Plus, Pencil, Trash2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Users2, Plus, Pencil, Trash2, UserCheck, UserX, Shield } from 'lucide-react';
 import type { Group } from '@/types/models';
+
+interface GroupMember {
+  userId: string;
+  userName: string;
+  userAvatarUrl?: string;
+  status: string;
+  joinedAt: string;
+}
+
+interface GroupAdmin {
+  userId: string;
+  email: string;
+  name: string;
+}
 
 interface GroupFormData {
   name: string;
@@ -30,6 +45,9 @@ const emptyForm: GroupFormData = {
 };
 
 export default function GroupsPage() {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.isSuperAdmin ?? false;
+
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -38,6 +56,14 @@ export default function GroupsPage() {
   const [form, setForm] = useState<GroupFormData>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Members/Admins management
+  const [manageGroup, setManageGroup] = useState<Group | null>(null);
+  const [manageTab, setManageTab] = useState<'members' | 'admins'>('members');
+  const [members, setMembers] = useState<GroupMember[]>([]);
+  const [admins, setAdmins] = useState<GroupAdmin[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
 
   const loadGroups = useCallback(async () => {
     const result = await api.admin.getGroups();
@@ -119,6 +145,57 @@ export default function GroupsPage() {
     }
   }
 
+  async function openManageModal(group: Group) {
+    setManageGroup(group);
+    setManageTab('members');
+    setLoadingMembers(true);
+    setAdminEmail('');
+
+    const [membersResult, adminsResult] = await Promise.all([
+      api.admin.getGroupMembers(group.id),
+      isSuperAdmin ? api.admin.getGroupAdmins(group.id) : Promise.resolve({ data: null, error: null }),
+    ]);
+
+    setMembers(membersResult.data?.members || []);
+    setAdmins(adminsResult.data?.admins || []);
+    setLoadingMembers(false);
+  }
+
+  async function handleApproveMember(userId: string) {
+    if (!manageGroup) return;
+    await api.admin.approveGroupMember(manageGroup.id, userId);
+    setMembers(members.map(m => m.userId === userId ? { ...m, status: 'active' } : m));
+  }
+
+  async function handleRemoveMember(userId: string) {
+    if (!manageGroup) return;
+    await api.admin.removeGroupMember(manageGroup.id, userId);
+    setMembers(members.filter(m => m.userId !== userId));
+  }
+
+  async function handleAddAdmin() {
+    if (!manageGroup || !adminEmail.trim()) return;
+    // Search users by email to get userId
+    const usersResult = await api.admin.getUsers();
+    const matchedUser = usersResult.data?.users?.find(
+      (u: { email?: string }) => u.email?.toLowerCase() === adminEmail.trim().toLowerCase()
+    );
+    if (!matchedUser) {
+      setError('User not found with that email');
+      return;
+    }
+    await api.admin.assignGroupAdmin(manageGroup.id, matchedUser.userId || (matchedUser as unknown as { id: string }).id);
+    setAdminEmail('');
+    const result = await api.admin.getGroupAdmins(manageGroup.id);
+    setAdmins(result.data?.admins || []);
+  }
+
+  async function handleRemoveAdmin(userId: string) {
+    if (!manageGroup) return;
+    await api.admin.removeGroupAdmin(manageGroup.id, userId);
+    setAdmins(admins.filter(a => a.userId !== userId));
+  }
+
   const columns: Column<Group & Record<string, unknown>>[] = [
     {
       key: 'name',
@@ -176,9 +253,16 @@ export default function GroupsPage() {
     {
       key: 'actions',
       header: '',
-      className: 'w-24',
+      className: 'w-32',
       render: (group) => (
         <div className="flex items-center gap-1">
+          <button
+            onClick={(e) => { e.stopPropagation(); openManageModal(group as unknown as Group); }}
+            className="rounded p-1.5 text-muted hover:bg-gray-100 hover:text-blue-600 dark:hover:bg-dark-tertiary"
+            title="Manage Members"
+          >
+            <Users2 size={15} />
+          </button>
           <button
             onClick={(e) => { e.stopPropagation(); openEditModal(group as unknown as Group); }}
             className="rounded p-1.5 text-muted hover:bg-gray-100 hover:text-brand-orange dark:hover:bg-dark-tertiary"
@@ -186,13 +270,15 @@ export default function GroupsPage() {
           >
             <Pencil size={15} />
           </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); setDeleteConfirm(group as unknown as Group); }}
-            className="rounded p-1.5 text-muted hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-            title="Delete"
-          >
-            <Trash2 size={15} />
-          </button>
+          {isSuperAdmin && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setDeleteConfirm(group as unknown as Group); }}
+              className="rounded p-1.5 text-muted hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+              title="Delete"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
         </div>
       ),
     },
@@ -322,6 +408,136 @@ export default function GroupsPage() {
               Delete
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Manage Members / Admins Modal */}
+      <Modal
+        isOpen={!!manageGroup}
+        onClose={() => setManageGroup(null)}
+        title={`Manage: ${manageGroup?.name || ''}`}
+        size="lg"
+      >
+        <div className="space-y-4">
+          {/* Tab switcher */}
+          <div className="flex gap-1 rounded-lg bg-gray-100 p-1 dark:bg-dark-tertiary">
+            <button
+              onClick={() => setManageTab('members')}
+              className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                manageTab === 'members'
+                  ? 'bg-white text-[var(--foreground)] shadow-sm dark:bg-dark-secondary'
+                  : 'text-muted hover:text-[var(--foreground)]'
+              }`}
+            >
+              Members ({members.length})
+            </button>
+            {isSuperAdmin && (
+              <button
+                onClick={() => setManageTab('admins')}
+                className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  manageTab === 'admins'
+                    ? 'bg-white text-[var(--foreground)] shadow-sm dark:bg-dark-secondary'
+                    : 'text-muted hover:text-[var(--foreground)]'
+                }`}
+              >
+                Admins ({admins.length})
+              </button>
+            )}
+          </div>
+
+          {loadingMembers ? (
+            <div className="py-8 text-center text-sm text-muted">Loading...</div>
+          ) : manageTab === 'members' ? (
+            <div className="max-h-96 space-y-2 overflow-y-auto">
+              {members.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted">No members yet</p>
+              ) : (
+                members.map((member) => (
+                  <div key={member.userId} className="flex items-center justify-between rounded-lg border border-border-light px-4 py-3 dark:border-border-dark">
+                    <div className="flex items-center gap-3">
+                      {member.userAvatarUrl ? (
+                        <img src={member.userAvatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+                      ) : (
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600 dark:bg-dark-tertiary dark:text-gray-300">
+                          {member.userName?.charAt(0) || '?'}
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-[var(--foreground)]">{member.userName}</p>
+                        <p className="text-xs text-muted">Joined {new Date(member.joinedAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {member.status === 'pending' ? (
+                        <>
+                          <Badge variant="warning">Pending</Badge>
+                          <button
+                            onClick={() => handleApproveMember(member.userId)}
+                            className="rounded p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                            title="Approve"
+                          >
+                            <UserCheck size={16} />
+                          </button>
+                        </>
+                      ) : (
+                        <Badge variant="success">Active</Badge>
+                      )}
+                      <button
+                        onClick={() => handleRemoveMember(member.userId)}
+                        className="rounded p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        title="Remove"
+                      >
+                        <UserX size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Add admin form */}
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  className={`${inputClasses} flex-1`}
+                  placeholder="Enter user email to add as admin..."
+                />
+                <Button onClick={handleAddAdmin} disabled={!adminEmail.trim()}>
+                  <Shield size={16} />
+                  Add
+                </Button>
+              </div>
+
+              {error && (
+                <p className="text-sm text-red-500">{error}</p>
+              )}
+
+              <div className="max-h-80 space-y-2 overflow-y-auto">
+                {admins.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-muted">No admins assigned</p>
+                ) : (
+                  admins.map((admin) => (
+                    <div key={admin.userId} className="flex items-center justify-between rounded-lg border border-border-light px-4 py-3 dark:border-border-dark">
+                      <div>
+                        <p className="text-sm font-medium text-[var(--foreground)]">{admin.name || admin.email}</p>
+                        <p className="text-xs text-muted">{admin.email}</p>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveAdmin(admin.userId)}
+                        className="rounded p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        title="Remove Admin"
+                      >
+                        <UserX size={16} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
     </div>

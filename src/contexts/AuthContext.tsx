@@ -8,6 +8,7 @@ import {
   isAdmin,
   getUserFromSession,
 } from '@/lib/auth';
+import { api } from '@/lib/api';
 import type { AdminUser } from '@/types/models';
 
 interface AuthContextType {
@@ -30,11 +31,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const loadManagedEntities = useCallback(async (adminUser: AdminUser): Promise<AdminUser> => {
+    // Load managed courts/groups for non-super-admin users
+    if (adminUser.isSuperAdmin) return adminUser;
+
+    try {
+      if (adminUser.isCourtManager) {
+        const result = await api.admin.getMyCourts();
+        if (result.data) {
+          adminUser.managedCourtIds = result.data.courtIds;
+        }
+      }
+      if (adminUser.isGroupAdmin) {
+        const result = await api.admin.getMyGroups();
+        if (result.data) {
+          adminUser.managedGroupIds = result.data.groupIds;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load managed entities:', e);
+    }
+
+    return adminUser;
+  }, []);
+
   const checkAuth = useCallback(async () => {
     try {
       const session = await getCurrentSession();
       if (session && isAdmin(session)) {
-        setUser(getUserFromSession(session));
+        const adminUser = getUserFromSession(session);
+        const enriched = await loadManagedEntities(adminUser);
+        setUser(enriched);
       } else {
         setUser(null);
       }
@@ -43,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [loadManagedEntities]);
 
   useEffect(() => {
     checkAuth();
@@ -55,7 +82,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await cognitoSignOut();
       throw new Error('You do not have admin access. Contact an administrator.');
     }
-    setUser(getUserFromSession(session));
+    const adminUser = getUserFromSession(session);
+    const enriched = await loadManagedEntities(adminUser);
+    setUser(enriched);
   };
 
   const signOut = async () => {

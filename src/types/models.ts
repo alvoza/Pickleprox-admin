@@ -375,6 +375,10 @@ export interface AdminUser {
   groups: string[];
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  isCourtManager: boolean;
+  isGroupAdmin: boolean;
+  managedCourtIds?: string[];
+  managedGroupIds?: string[];
 }
 
 export interface DashboardStats {

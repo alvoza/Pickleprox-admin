@@ -1,7 +1,6 @@
 import { getAuthToken } from './auth';
 import {
   getMockDashboard,
-  getMockTournaments,
   getMockTips,
   type ApiResponse,
 } from './mock-data';
@@ -128,7 +127,8 @@ export const api = {
     deleteCourt: (id: string): Promise<ApiResponse<{ message: string }>> =>
       request<{ message: string }>(`/courts/${id}`, { method: 'DELETE' }),
 
-    getGames: (): Promise<ApiResponse<{ games: Game[] }>> => request<{ games: Game[] }>('/admin/games'),
+    getGames: (groupId?: string): Promise<ApiResponse<{ games: Game[] }>> =>
+      request<{ games: Game[] }>(`/admin/games${groupId ? `?groupId=${groupId}` : ''}`),
 
     getGame: (id: string): Promise<ApiResponse<Game>> => request<Game>(`/admin/games/${id}`),
 
@@ -141,8 +141,17 @@ export const api = {
     deleteGame: (id: string): Promise<ApiResponse<{ message: string }>> =>
       request<{ message: string }>(`/admin/games/${id}`, { method: 'DELETE' }),
 
-    // TODO: Replace with: return request<{ tournaments: Tournament[] }>('/admin/tournaments')
-    getTournaments: (): Promise<ApiResponse<{ tournaments: Tournament[] }>> => getMockTournaments(),
+    getTournaments: (groupId?: string): Promise<ApiResponse<{ tournaments: Tournament[] }>> =>
+      request<{ tournaments: Tournament[] }>(`/admin/tournaments${groupId ? `?groupId=${groupId}` : ''}`),
+
+    createTournament: (tournament: Partial<Tournament>): Promise<ApiResponse<Tournament>> =>
+      request<Tournament>('/admin/tournaments', { method: 'POST', body: JSON.stringify(tournament) }),
+
+    updateTournament: (id: string, tournament: Partial<Tournament>): Promise<ApiResponse<Tournament>> =>
+      request<Tournament>(`/admin/tournaments/${id}`, { method: 'PUT', body: JSON.stringify(tournament) }),
+
+    deleteTournament: (id: string): Promise<ApiResponse<{ message: string }>> =>
+      request<{ message: string }>(`/admin/tournaments/${id}`, { method: 'DELETE' }),
 
     // TODO: Replace with: return request<{ tips: Tip[] }>('/admin/tips')
     getTips: (): Promise<ApiResponse<{ tips: Tip[] }>> => getMockTips(),
@@ -184,6 +193,47 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+
+    // Managed entity lookups (for role-scoped access)
+    getMyCourts: (): Promise<ApiResponse<{ courtIds: string[] }>> =>
+      request<{ courtIds: string[] }>('/admin/my/courts'),
+
+    getMyGroups: (): Promise<ApiResponse<{ groupIds: string[] }>> =>
+      request<{ groupIds: string[] }>('/admin/my/groups'),
+
+    // Court manager assignments
+    getCourtManagers: (courtId: string): Promise<ApiResponse<{ managers: Array<{ userId: string; email: string; name: string }> }>> =>
+      request(`/admin/courts/${courtId}/managers`),
+
+    assignCourtManager: (courtId: string, userId: string): Promise<ApiResponse<{ success: boolean }>> =>
+      request(`/admin/courts/${courtId}/managers`, { method: 'POST', body: JSON.stringify({ userId }) }),
+
+    removeCourtManager: (courtId: string, userId: string): Promise<ApiResponse<{ success: boolean }>> =>
+      request(`/admin/courts/${courtId}/managers/${userId}`, { method: 'DELETE' }),
+
+    // Group admin assignments
+    getGroupAdmins: (groupId: string): Promise<ApiResponse<{ admins: Array<{ userId: string; email: string; name: string }> }>> =>
+      request(`/admin/groups/${groupId}/admins`),
+
+    assignGroupAdmin: (groupId: string, userId: string): Promise<ApiResponse<{ success: boolean }>> =>
+      request(`/admin/groups/${groupId}/admins`, { method: 'POST', body: JSON.stringify({ userId }) }),
+
+    removeGroupAdmin: (groupId: string, userId: string): Promise<ApiResponse<{ success: boolean }>> =>
+      request(`/admin/groups/${groupId}/admins/${userId}`, { method: 'DELETE' }),
+
+    // Group member management
+    getGroupMembers: (groupId: string): Promise<ApiResponse<{ members: Array<{ userId: string; userName: string; userAvatarUrl?: string; status: string; joinedAt: string }> }>> =>
+      request(`/admin/groups/${groupId}/members`),
+
+    approveGroupMember: (groupId: string, userId: string): Promise<ApiResponse<{ success: boolean }>> =>
+      request(`/admin/groups/${groupId}/members/${userId}`, { method: 'PUT', body: JSON.stringify({ status: 'active' }) }),
+
+    removeGroupMember: (groupId: string, userId: string): Promise<ApiResponse<{ success: boolean }>> =>
+      request(`/admin/groups/${groupId}/members/${userId}`, { method: 'DELETE' }),
+
+    // Event creation from admin
+    createEvent: (event: Record<string, unknown>): Promise<ApiResponse<Game>> =>
+      request<Game>('/admin/events', { method: 'POST', body: JSON.stringify(event) }),
 
     getGroups: (): Promise<ApiResponse<{ groups: Group[] }>> =>
       request<{ groups: Group[] }>('/admin/groups'),

@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { canAccessPage } from '@/lib/permissions';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard,
   Users,
@@ -56,11 +58,21 @@ const navigation = [
 
 export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const userGroups = user?.groups || [];
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
     return pathname.startsWith(href);
   };
+
+  // Filter navigation sections based on user permissions
+  const filteredNavigation = navigation
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => canAccessPage(item.href, userGroups)),
+    }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <>
@@ -107,7 +119,7 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-4">
-          {navigation.map((section) => (
+          {filteredNavigation.map((section) => (
             <div key={section.title} className="mb-6">
               {!isCollapsed && (
                 <h3 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-light">

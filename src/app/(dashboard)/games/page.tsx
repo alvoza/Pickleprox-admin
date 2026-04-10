@@ -28,6 +28,8 @@ const ENDABLE_STATUSES: GameStatus[] = ['open', 'full', 'in_progress', 'created'
 export default function GamesPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.isSuperAdmin ?? false;
+  const isGroupAdmin = user?.isGroupAdmin ?? false;
+  const managedGroupIds = user?.managedGroupIds || [];
 
   const [games, setGames] = useState<AdminGame[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,10 +56,13 @@ export default function GamesPage() {
   const [editAddress, setEditAddress] = useState('');
 
   const loadGames = useCallback(async () => {
-    const result = await api.admin.getGames();
+    const groupId = isGroupAdmin && !isSuperAdmin && managedGroupIds.length > 0
+      ? managedGroupIds[0]
+      : undefined;
+    const result = await api.admin.getGames(groupId);
     if (result.data) setGames(result.data.games as AdminGame[]);
     setIsLoading(false);
-  }, []);
+  }, [isSuperAdmin, isGroupAdmin, managedGroupIds]);
 
   useEffect(() => {
     loadGames();
