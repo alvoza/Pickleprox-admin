@@ -19,7 +19,7 @@ const colorClasses = {
 
 export function StatCard({ title, value, icon: Icon, change, color = 'orange' }: StatCardProps) {
   return (
-    <div className="rounded-xl border border-border-light bg-[var(--card-bg)] p-5 shadow-sm dark:border-border-dark">
+    <div className="rounded-xl bg-[var(--card-bg)] p-5 shadow-[var(--card-shadow)] transition-shadow duration-200 dark:border dark:border-border-dark">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-muted">{title}</p>
@@ -33,8 +33,8 @@ export function StatCard({ title, value, icon: Icon, change, color = 'orange' }:
             </p>
           )}
         </div>
-        <div className={cn('rounded-lg p-2.5', colorClasses[color])}>
-          <Icon size={22} />
+        <div className={cn('rounded-xl p-3', colorClasses[color])}>
+          <Icon size={24} />
         </div>
       </div>
     </div>

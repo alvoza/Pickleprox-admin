@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -87,26 +88,24 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-border-light bg-[var(--sidebar-bg)] transition-all duration-300 dark:border-border-dark lg:static lg:z-auto',
+          'fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-gray-100 bg-[var(--sidebar-bg)] transition-all duration-300 dark:border-border-dark lg:static lg:z-auto',
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
           isCollapsed ? 'w-20' : 'w-64',
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center justify-between border-b border-border-light px-4 dark:border-border-dark">
+        <div className="flex h-16 items-center justify-between px-4 dark:border-b dark:border-border-dark">
           {!isCollapsed && (
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-orange">
-                <span className="text-sm font-bold text-white">P</span>
-              </div>
+              <Image src="/icons/ppro-icon.png" alt="PicklePro" width={32} height={32} className="h-8 w-8" />
               <span className="text-lg font-bold text-[var(--foreground)]">
                 Pickle<span className="text-brand-orange">Pro</span>
               </span>
             </Link>
           )}
           {isCollapsed && (
-            <Link href="/" className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-brand-orange">
-              <span className="text-sm font-bold text-white">P</span>
+            <Link href="/" className="mx-auto">
+              <Image src="/icons/ppro-icon.png" alt="PicklePro" width={32} height={32} className="h-8 w-8" />
             </Link>
           )}
           <button
@@ -119,14 +118,15 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-4">
-          {filteredNavigation.map((section) => (
-            <div key={section.title} className="mb-6">
+          {filteredNavigation.map((section, sectionIndex) => (
+            <div key={section.title}>
+              {sectionIndex > 0 && <div className="my-3" />}
               {!isCollapsed && (
-                <h3 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-light">
+                <h3 className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-light">
                   {section.title}
                 </h3>
               )}
-              <ul className="space-y-1">
+              <ul className="space-y-0.5">
                 {section.items.map((item) => {
                   const Icon = item.icon;
                   const active = isActive(item.href);
@@ -136,10 +136,10 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
                         href={item.href}
                         onClick={onClose}
                         className={cn(
-                          'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                          'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-200',
                           active
-                            ? 'bg-brand-orange/10 text-brand-orange'
-                            : 'text-muted hover:bg-gray-100 hover:text-[var(--foreground)] dark:hover:bg-dark-tertiary',
+                            ? 'bg-brand-orange/8 text-brand-orange'
+                            : 'text-muted hover:bg-gray-50 hover:text-[var(--foreground)] dark:hover:bg-dark-tertiary',
                           isCollapsed && 'justify-center px-0',
                         )}
                         title={isCollapsed ? item.name : undefined}
@@ -156,7 +156,7 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
         </nav>
 
         {/* Collapse toggle (desktop only) */}
-        <div className="hidden border-t border-border-light p-3 dark:border-border-dark lg:block">
+        <div className="hidden p-3 dark:border-t dark:border-border-dark lg:block">
           <button
             onClick={onToggleCollapse}
             className="flex w-full items-center justify-center rounded-lg p-2 text-muted hover:bg-gray-100 dark:hover:bg-dark-tertiary"

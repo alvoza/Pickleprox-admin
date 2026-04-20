@@ -18,8 +18,9 @@ export function FormField({ label, error, children, className }: FormFieldProps)
 }
 
 export const inputClasses =
-  'w-full rounded-lg border border-border-light bg-white px-4 py-2.5 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 dark:border-border-dark dark:bg-dark-tertiary';
+  'w-full h-11 rounded-lg border border-[var(--input-border)] bg-[var(--input-bg)] px-4 py-2.5 text-sm text-[var(--foreground)] outline-none transition-all duration-200 placeholder:text-gray-400 focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 dark:placeholder:text-gray-500';
 
 export const selectClasses = inputClasses;
 
-export const textareaClasses = `${inputClasses} min-h-[100px] resize-y`;
+export const textareaClasses =
+  'w-full rounded-lg border border-[var(--input-border)] bg-[var(--input-bg)] px-4 py-2.5 text-sm text-[var(--foreground)] outline-none transition-all duration-200 placeholder:text-gray-400 focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 dark:placeholder:text-gray-500 min-h-[100px] resize-y';

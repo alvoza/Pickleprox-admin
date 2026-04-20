@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { Users, UserCheck, Calendar, Clock } from 'lucide-react';
 import { StatCard } from '@/components/ui/stat-card';
 import { Card } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { api } from '@/lib/api';
@@ -33,10 +34,10 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[var(--foreground)]">Dashboard</h1>
-        <p className="text-sm text-muted">Welcome to the PicklePro admin panel</p>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        subtitle="Welcome to the PicklePro admin panel"
+      />
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

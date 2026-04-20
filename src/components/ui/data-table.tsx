@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Inbox } from 'lucide-react';
 
 export interface Column<T> {
   key: string;
@@ -85,13 +85,26 @@ export function DataTable<T extends Record<string, unknown>>({
     }
   };
 
+  // Generate page numbers to display (up to 5)
+  const getPageNumbers = () => {
+    const pages: number[] = [];
+    const maxVisible = 5;
+    let start = Math.max(0, page - Math.floor(maxVisible / 2));
+    const end = Math.min(totalPages, start + maxVisible);
+    start = Math.max(0, end - maxVisible);
+    for (let i = start; i < end; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
+
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-border-light bg-[var(--card-bg)] dark:border-border-dark">
+      <div className="rounded-xl bg-[var(--card-bg)] shadow-[var(--card-shadow)] dark:border dark:border-border-dark">
         <div className="p-8">
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-10 animate-pulse rounded bg-gray-100 dark:bg-dark-tertiary" />
+              <div key={i} className="h-10 animate-pulse rounded-lg bg-gray-100 dark:bg-dark-tertiary" />
             ))}
           </div>
         </div>
@@ -100,9 +113,9 @@ export function DataTable<T extends Record<string, unknown>>({
   }
 
   return (
-    <div className="rounded-xl border border-border-light bg-[var(--card-bg)] dark:border-border-dark">
+    <div className="rounded-xl bg-[var(--card-bg)] shadow-[var(--card-shadow)] dark:border dark:border-border-dark">
       {/* Toolbar */}
-      <div className="flex flex-col gap-3 border-b border-border-light px-5 py-4 dark:border-border-dark sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 dark:border-border-dark sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           {filterTabs && (
             <div className="flex gap-1">
@@ -114,9 +127,9 @@ export function DataTable<T extends Record<string, unknown>>({
                     setPage(0);
                   }}
                   className={cn(
-                    'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+                    'rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200',
                     activeFilter === tab.value
-                      ? 'bg-brand-orange/10 text-brand-orange'
+                      ? 'bg-brand-orange/10 text-brand-orange shadow-sm'
                       : 'text-muted hover:bg-gray-100 dark:hover:bg-dark-tertiary',
                   )}
                 >
@@ -134,7 +147,7 @@ export function DataTable<T extends Record<string, unknown>>({
               placeholder={searchPlaceholder}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-              className="rounded-lg border border-border-light bg-white py-2 pl-9 pr-4 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-brand-orange dark:border-border-dark dark:bg-dark-tertiary"
+              className="h-10 rounded-lg border border-[var(--input-border)] bg-[var(--input-bg)] py-2 pl-9 pr-4 text-sm text-[var(--foreground)] outline-none transition-all duration-200 placeholder:text-gray-400 focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 dark:placeholder:text-gray-500"
             />
           </div>
         )}
@@ -144,13 +157,13 @@ export function DataTable<T extends Record<string, unknown>>({
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border-light dark:border-border-dark">
+            <tr className="border-b border-gray-100 bg-[var(--table-header-bg)] dark:border-border-dark">
               {columns.map(col => (
                 <th
                   key={col.key}
                   onClick={() => col.sortable && handleSort(col.key)}
                   className={cn(
-                    'px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted',
+                    'px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted',
                     col.sortable && 'cursor-pointer select-none hover:text-[var(--foreground)]',
                     col.className,
                   )}
@@ -165,11 +178,14 @@ export function DataTable<T extends Record<string, unknown>>({
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-50 dark:divide-border-dark">
             {paged.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-5 py-8 text-center text-sm text-muted">
-                  {emptyMessage}
+                <td colSpan={columns.length} className="px-5 py-12 text-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <Inbox size={36} className="text-muted-light" />
+                    <p className="text-sm text-muted">{emptyMessage}</p>
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -178,8 +194,8 @@ export function DataTable<T extends Record<string, unknown>>({
                   key={(item as Record<string, unknown>).id as string || idx}
                   onClick={() => onRowClick?.(item)}
                   className={cn(
-                    'border-b border-border-light last:border-0 dark:border-border-dark',
-                    onRowClick && 'cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-tertiary',
+                    'transition-colors duration-150',
+                    onRowClick && 'cursor-pointer hover:bg-[var(--table-row-hover)]',
                   )}
                 >
                   {columns.map(col => (
@@ -198,22 +214,35 @@ export function DataTable<T extends Record<string, unknown>>({
 
       {/* Pagination */}
       {filtered.length > pageSize && (
-        <div className="flex items-center justify-between border-t border-border-light px-5 py-3 dark:border-border-dark">
+        <div className="flex items-center justify-between border-t border-gray-100 px-5 py-3 dark:border-border-dark">
           <p className="text-xs text-muted">
             Showing {page * pageSize + 1}-{Math.min((page + 1) * pageSize, filtered.length)} of {filtered.length}
           </p>
           <div className="flex items-center gap-1">
-            <button onClick={() => setPage(0)} disabled={page === 0} className="rounded p-1 text-muted hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-dark-tertiary">
+            <button onClick={() => setPage(0)} disabled={page === 0} className="rounded-lg p-1.5 text-muted transition-colors duration-150 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-dark-tertiary">
               <ChevronsLeft size={16} />
             </button>
-            <button onClick={() => setPage(p => p - 1)} disabled={page === 0} className="rounded p-1 text-muted hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-dark-tertiary">
+            <button onClick={() => setPage(p => p - 1)} disabled={page === 0} className="rounded-lg p-1.5 text-muted transition-colors duration-150 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-dark-tertiary">
               <ChevronLeft size={16} />
             </button>
-            <span className="px-2 text-xs text-muted">{page + 1} / {totalPages}</span>
-            <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1} className="rounded p-1 text-muted hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-dark-tertiary">
+            {getPageNumbers().map(p => (
+              <button
+                key={p}
+                onClick={() => setPage(p)}
+                className={cn(
+                  'min-w-[32px] rounded-lg px-2 py-1 text-xs font-medium transition-colors duration-150',
+                  p === page
+                    ? 'bg-brand-orange text-white shadow-sm'
+                    : 'text-muted hover:bg-gray-100 dark:hover:bg-dark-tertiary',
+                )}
+              >
+                {p + 1}
+              </button>
+            ))}
+            <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1} className="rounded-lg p-1.5 text-muted transition-colors duration-150 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-dark-tertiary">
               <ChevronRight size={16} />
             </button>
-            <button onClick={() => setPage(totalPages - 1)} disabled={page >= totalPages - 1} className="rounded p-1 text-muted hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-dark-tertiary">
+            <button onClick={() => setPage(totalPages - 1)} disabled={page >= totalPages - 1} className="rounded-lg p-1.5 text-muted transition-colors duration-150 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-dark-tertiary">
               <ChevronsRight size={16} />
             </button>
           </div>
