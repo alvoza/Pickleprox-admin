@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { PageHeader } from '@/components/ui/page-header';
 import { useAuth } from '@/contexts/AuthContext';
-import { Trophy, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Trophy, Plus, Pencil, Trash2, LayoutDashboard } from 'lucide-react';
 import { formatDate, formatCurrency, capitalize } from '@/lib/utils';
 import type { Tournament } from '@/types/models';
 
@@ -37,11 +37,10 @@ export default function TournamentsPage() {
   const [error, setError] = useState('');
 
   const loadTournaments = useCallback(async () => {
-    const groupId = isGroupAdmin && !isSuperAdmin && managedGroupIds.length > 0 ? managedGroupIds[0] : undefined;
-    const result = await api.admin.getTournaments(groupId);
+    const result = await api.admin.getTournaments();
     if (result.data) setTournaments(result.data.tournaments);
     setIsLoading(false);
-  }, [isSuperAdmin, isGroupAdmin, managedGroupIds]);
+  }, []);
 
   useEffect(() => { loadTournaments(); }, [loadTournaments]);
 
@@ -75,9 +74,10 @@ export default function TournamentsPage() {
     { key: 'prizePool', header: 'Prize', sortable: true, render: (t) => <span className="text-sm font-medium">{t.prizePool ? formatCurrency(t.prizePool as number) : '-'}</span> },
     { key: 'registrationOpen', header: 'Status', render: (t) => <Badge variant={t.registrationOpen ? 'success' : 'default'}>{t.registrationOpen ? 'Open' : 'Closed'}</Badge> },
     {
-      key: 'actions', header: '', className: 'w-24',
+      key: 'actions', header: '', className: 'w-32',
       render: (t) => (
         <div className="flex items-center gap-1">
+          <button onClick={(e) => { e.stopPropagation(); router.push(`/tournaments/${t.id}/manage`); }} className="rounded-lg p-1.5 text-muted transition-colors duration-150 hover:bg-gray-100 hover:text-brand-orange dark:hover:bg-dark-tertiary" title="Manage"><LayoutDashboard size={15} /></button>
           <button onClick={(e) => { e.stopPropagation(); router.push(`/tournaments/${t.id}`); }} className="rounded-lg p-1.5 text-muted transition-colors duration-150 hover:bg-gray-100 hover:text-brand-orange dark:hover:bg-dark-tertiary" title="Edit"><Pencil size={15} /></button>
           <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(t as unknown as Tournament); }} className="rounded-lg p-1.5 text-muted transition-colors duration-150 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20" title="Delete"><Trash2 size={15} /></button>
         </div>
@@ -103,7 +103,7 @@ export default function TournamentsPage() {
         isLoading={isLoading} emptyMessage="No tournaments found"
         filterTabs={[{ label: 'All', value: 'all' }, { label: 'Pro Series', value: 'pro_series' }, { label: 'Social', value: 'social' }, { label: 'League', value: 'league' }, { label: 'Open', value: 'open' }]}
         activeFilter={filter} onFilterChange={setFilter}
-        onRowClick={(t) => router.push(`/tournaments/${t.id}`)}
+        onRowClick={(t) => router.push(`/tournaments/${t.id}/manage`)}
       />
 
       {error && <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">{error}</div>}

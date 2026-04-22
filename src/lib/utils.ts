@@ -41,7 +41,8 @@ export function formatNumber(num: number): string {
   return new Intl.NumberFormat('en-US').format(num);
 }
 
-export function capitalize(str: string): string {
+export function capitalize(str: string | undefined | null): string {
+  if (!str) return '';
   return str.charAt(0).toUpperCase() + str.slice(1).replace(/_/g, ' ');
 }
 

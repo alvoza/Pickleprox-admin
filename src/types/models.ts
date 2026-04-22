@@ -330,6 +330,12 @@ export interface Group extends BaseEntity {
 // COURT MODEL
 // =============================================================================
 
+export interface CourtImage {
+  url: string;
+  isDefault: boolean;
+  order: number;
+}
+
 export interface Court extends BaseEntity {
   name: string;
   location: string;
@@ -340,6 +346,7 @@ export interface Court extends BaseEntity {
   amenities: string[];
   hoursOpen: string;
   imageUrl: string;
+  images?: CourtImage[];
   coordinates?: {
     latitude: number;
     longitude: number;
@@ -377,6 +384,7 @@ export interface AdminUser {
   isSuperAdmin: boolean;
   isCourtManager: boolean;
   isGroupAdmin: boolean;
+  isTournamentAdmin: boolean;
   managedCourtIds?: string[];
   managedGroupIds?: string[];
 }
@@ -396,4 +404,81 @@ export interface ActivityItem {
   description: string;
   timestamp: string;
   userName?: string;
+}
+
+// =============================================================================
+// TOURNAMENT MANAGEMENT TYPES
+// =============================================================================
+
+export type CategoryFormat = 'round_robin' | 'single_elimination';
+export type CategoryStatus = 'setup' | 'in_progress' | 'completed';
+export type TournamentMatchStatus = 'scheduled' | 'in_progress' | 'completed';
+
+/** A category within a tournament (e.g., "Doubles Beginner", "Singles Open") */
+export interface TournamentCategory extends BaseEntity {
+  tournamentId: string;
+  name: string;
+  format: CategoryFormat;
+  matchType: MatchType;
+  skillLevel?: 'all' | SkillLevel;
+  duprRange?: string;
+  maxTeams: number;
+  currentTeams: number;
+  status: CategoryStatus;
+  qualifyCount?: number;
+  order: number;
+}
+
+/** CRM player — may or may not be an app user */
+export interface TournamentPlayer extends BaseEntity {
+  name: string;
+  email?: string;
+  phone?: string;
+  duprRating?: number;
+  skillLevel?: SkillLevel;
+  notes?: string;
+  userId?: string;
+  tournamentsPlayed: number;
+}
+
+/** Team registered in a specific category */
+export interface TournamentTeam {
+  id: string;
+  name: string;
+  players: { id: string; name: string }[];
+  categoryId: string;
+  tournamentId: string;
+  seed?: number;
+}
+
+/** Match within a category */
+export interface TournamentMatch {
+  id: string;
+  tournamentId: string;
+  categoryId: string;
+  round: number;
+  matchNumber: number;
+  date?: string;
+  time?: string;
+  court?: string;
+  teamA: { id: string; name: string };
+  teamB: { id: string; name: string };
+  scoreA?: number;
+  scoreB?: number;
+  status: TournamentMatchStatus;
+  winnerId?: string;
+}
+
+/** Computed standing for a team in a category */
+export interface TournamentStanding {
+  teamId: string;
+  teamName: string;
+  played: number;
+  won: number;
+  lost: number;
+  pointsFor: number;
+  pointsAgainst: number;
+  pointDiff: number;
+  winPct: number;
+  position: number;
 }

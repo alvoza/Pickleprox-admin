@@ -100,6 +100,7 @@ export function getUserFromSession(session: CognitoUserSession) {
     isSuperAdmin: groups.includes(SUPER_ADMIN_GROUP),
     isCourtManager: groups.includes('court_owners'),
     isGroupAdmin: groups.includes('group_admins'),
+    isTournamentAdmin: groups.includes('tournament_admins'),
     managedCourtIds: [] as string[],
     managedGroupIds: [] as string[],
   };

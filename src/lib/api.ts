@@ -4,7 +4,17 @@ import {
   getMockTips,
   type ApiResponse,
 } from './mock-data';
-import type { Court, Game, Group, Tournament, User, Tip, DashboardStats, AdminNotification } from '@/types/models';
+import {
+  getMockTournamentPlayers,
+  getMockCategories,
+  getMockCategoryTeams,
+  getMockCategoryMatches,
+  getMockCategoryStandings,
+} from './tournament-mock-data';
+import type {
+  Court, Game, Group, Tournament, User, Tip, DashboardStats, AdminNotification,
+  TournamentCategory, TournamentPlayer, TournamentTeam, TournamentMatch, TournamentStanding,
+} from '@/types/models';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_ENDPOINT || '';
 
@@ -141,8 +151,17 @@ export const api = {
     deleteGame: (id: string): Promise<ApiResponse<{ message: string }>> =>
       request<{ message: string }>(`/admin/games/${id}`, { method: 'DELETE' }),
 
-    getTournaments: (groupId?: string): Promise<ApiResponse<{ tournaments: Tournament[] }>> =>
-      request<{ tournaments: Tournament[] }>(`/admin/tournaments${groupId ? `?groupId=${groupId}` : ''}`),
+    getTournaments: async (groupId?: string): Promise<ApiResponse<{ tournaments: Tournament[] }>> => {
+      const result = await request<{ tournaments: Tournament[] }>(`/admin/tournaments${groupId ? `?groupId=${groupId}` : ''}`);
+      if (result.data) {
+        // Backend returns tournamentId, frontend expects id
+        result.data.tournaments = result.data.tournaments.map(t => {
+          const raw = t as unknown as Record<string, unknown>;
+          return { ...t, id: (raw.tournamentId as string) || t.id } as Tournament;
+        });
+      }
+      return result;
+    },
 
     createTournament: (tournament: Partial<Tournament>): Promise<ApiResponse<Tournament>> =>
       request<Tournament>('/admin/tournaments', { method: 'POST', body: JSON.stringify(tournament) }),
@@ -246,5 +265,72 @@ export const api = {
 
     deleteGroup: (id: string): Promise<ApiResponse<{ message: string }>> =>
       request<{ message: string }>(`/admin/groups/${id}`, { method: 'DELETE' }),
+
+    // =========================================================================
+    // TOURNAMENT MANAGEMENT
+    // =========================================================================
+
+    // --- Categories --- (TODO: Replace with real API)
+    getCategories: (tournamentId: string): Promise<ApiResponse<{ categories: TournamentCategory[] }>> =>
+      getMockCategories(tournamentId),
+
+    createCategory: (tournamentId: string, category: Partial<TournamentCategory>): Promise<ApiResponse<TournamentCategory>> =>
+      request<TournamentCategory>(`/admin/tournaments/${tournamentId}/categories`, { method: 'POST', body: JSON.stringify(category) }),
+
+    updateCategory: (tournamentId: string, categoryId: string, category: Partial<TournamentCategory>): Promise<ApiResponse<TournamentCategory>> =>
+      request<TournamentCategory>(`/admin/tournaments/${tournamentId}/categories/${categoryId}`, { method: 'PUT', body: JSON.stringify(category) }),
+
+    deleteCategory: (tournamentId: string, categoryId: string): Promise<ApiResponse<{ message: string }>> =>
+      request<{ message: string }>(`/admin/tournaments/${tournamentId}/categories/${categoryId}`, { method: 'DELETE' }),
+
+    // --- Category Teams --- (TODO: Replace with real API)
+    getCategoryTeams: (tournamentId: string, categoryId: string): Promise<ApiResponse<{ teams: TournamentTeam[] }>> =>
+      getMockCategoryTeams(tournamentId, categoryId),
+
+    addCategoryTeam: (tournamentId: string, categoryId: string, team: Partial<TournamentTeam>): Promise<ApiResponse<TournamentTeam>> =>
+      request<TournamentTeam>(`/admin/tournaments/${tournamentId}/categories/${categoryId}/teams`, { method: 'POST', body: JSON.stringify(team) }),
+
+    removeCategoryTeam: (tournamentId: string, categoryId: string, teamId: string): Promise<ApiResponse<{ message: string }>> =>
+      request<{ message: string }>(`/admin/tournaments/${tournamentId}/categories/${categoryId}/teams/${teamId}`, { method: 'DELETE' }),
+
+    // --- Category Matches --- (TODO: Replace with real API)
+    getCategoryMatches: (tournamentId: string, categoryId: string, round?: number): Promise<ApiResponse<{ matches: TournamentMatch[] }>> =>
+      getMockCategoryMatches(tournamentId, categoryId, round),
+
+    createMatch: (tournamentId: string, categoryId: string, match: Partial<TournamentMatch>): Promise<ApiResponse<TournamentMatch>> =>
+      request<TournamentMatch>(`/admin/tournaments/${tournamentId}/categories/${categoryId}/matches`, { method: 'POST', body: JSON.stringify(match) }),
+
+    updateMatch: (tournamentId: string, categoryId: string, matchId: string, data: Partial<TournamentMatch>): Promise<ApiResponse<TournamentMatch>> =>
+      request<TournamentMatch>(`/admin/tournaments/${tournamentId}/categories/${categoryId}/matches/${matchId}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+    generateRound: (tournamentId: string, categoryId: string): Promise<ApiResponse<{ matches: TournamentMatch[]; round: number }>> =>
+      request<{ matches: TournamentMatch[]; round: number }>(`/admin/tournaments/${tournamentId}/categories/${categoryId}/generate-round`, { method: 'POST' }),
+
+    // --- Category Standings --- (TODO: Replace with real API)
+    getCategoryStandings: (tournamentId: string, categoryId: string): Promise<ApiResponse<{ standings: TournamentStanding[] }>> =>
+      getMockCategoryStandings(tournamentId, categoryId),
+
+    // --- CRM Players --- (TODO: Replace with real API)
+    getTournamentPlayers: (): Promise<ApiResponse<{ players: TournamentPlayer[] }>> =>
+      getMockTournamentPlayers(),
+
+    createTournamentPlayer: async (player: Partial<TournamentPlayer>): Promise<ApiResponse<TournamentPlayer>> => {
+      const newPlayer: TournamentPlayer = {
+        id: `tp${Date.now()}`, name: player.name || '', email: player.email, phone: player.phone,
+        duprRating: player.duprRating, skillLevel: player.skillLevel, notes: player.notes,
+        userId: player.userId, tournamentsPlayed: 0,
+        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      };
+      return { data: newPlayer, error: null };
+    },
+
+    updateTournamentPlayer: async (id: string, player: Partial<TournamentPlayer>): Promise<ApiResponse<TournamentPlayer>> => {
+      const updated = { id, ...player, updatedAt: new Date().toISOString() } as TournamentPlayer;
+      return { data: updated, error: null };
+    },
+
+    deleteTournamentPlayer: async (_id: string): Promise<ApiResponse<{ message: string }>> => {
+      return { data: { message: 'Deleted' }, error: null };
+    },
   },
 };

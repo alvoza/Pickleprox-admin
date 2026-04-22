@@ -17,6 +17,8 @@ import {
   Bell,
   X,
   ChevronLeft,
+  UserRound,
+  CalendarDays,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -39,8 +41,15 @@ const navigation = [
       { name: 'Users', href: '/users', icon: Users },
       { name: 'Courts', href: '/courts', icon: MapPin },
       { name: 'Games & Events', href: '/games', icon: Gamepad2 },
-      { name: 'Tournaments', href: '/tournaments', icon: Trophy },
       { name: 'Groups', href: '/groups', icon: Users2 },
+    ],
+  },
+  {
+    title: 'Tournaments',
+    items: [
+      { name: 'Tournaments', href: '/tournaments', icon: Trophy },
+      { name: 'Players', href: '/tournament-players', icon: UserRound },
+      { name: 'Calendar', href: '/calendar', icon: CalendarDays },
     ],
   },
   {
